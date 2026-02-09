@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#FF9EB5">
+    <title>Stoff-Zauber ✨ Paper Doll</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Patrick+Hand&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --paper-bg: #fdfbf7;
+            --paper-texture: radial-gradient(#e6e6e6 1px, transparent 1px);
+            --shadow-hard: 4px 4px 0px rgba(0,0,0,0.15);
+            --shadow-float: 8px 8px 0px rgba(0,0,0,0.1);
+            --border-thick: 3px solid #444;
+            --border-thin: 2px solid #444;
+            --primary: #FF9EB5;
+            --accent: #74b9ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: var(--paper-bg);
+            background-image: var(--paper-texture);
+            background-size: 20px 20px;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            color: #444;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Patrick Hand', cursive;
+            font-size: 32px;
+            font-weight: 700;
+            color: #ff6b81;
+            text-shadow: 2px 2px 0px white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: rotate(-2deg);
+        }
+
+        /* --- Main Layout --- */
+        main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* --- Paper UI Components --- */
+        .panel {
+            background: white;
+            border: var(--border-thin);
+            border-radius: 15px;
+            box-shadow: var(--shadow-hard);
+            margin-top: 5px;
+            position: relative;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 5px; left: 5px; right: 5px; bottom: 5px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
+        .paper-btn {
+            border: var(--border-thin);
+            border-radius: 12px;
+            background: white;
+            color: #444;
+            font-family: 'Patrick Hand', cursive;
+            font-weight: 600;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: var(--shadow-hard);
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transform: translate(0, 0);
+        }
+
+        .paper-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+        }
+
+        .paper-btn.active {
+            background: #fff0f3;
+            border-color: #ff6b81;
+            color: #ff6b81;
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+        }
+
+        /* --- Drawing --- */
+        #canvasWrapper {
+            flex: 1;
+            position: relative;
+            background: white;
+            border: var(--border-thick);
+            border-radius: 4px; 
+            box-shadow: var(--shadow-float);
+            margin: 10px 5px;
+            overflow: hidden;
+            touch-action: none;
+            transform: rotate(1deg);
+        }
+        
+        #canvasWrapper::after {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px dashed #ccc;
+            pointer-events: none;
+        }
+
+        .tools-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 10px;
+            scrollbar-width: none;
+        }
+        
+        .tool-item { min-width: 50px; height: 50px; font-size: 24px; border-radius: 50%; }
+        .color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #444; }
+        
+        .template-selector { display: flex; gap: 8px; margin-bottom: 5px; overflow-x: auto; padding-bottom: 5px; }
+        .template-btn { min-width: 60px; height: 60px; font-size: 32px; border-radius: 10px; }
+
+        /* --- Character & Drag Drop --- */
+        #characterStage {
+            flex: 1;
+            background: linear-gradient(to bottom, transparent 85%, #e0e0e0 85%, #e0e0e0 86%, transparent 86%);
+            position: relative;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            touch-action: none; /* WICHTIG für Gesten */
+        }
+
+        #outfitBar {
+            height: 120px;
+            padding: 10px;
+            overflow-x: auto;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .draggable-item {
+            min-width: 90px;
+            height: 90px;
+            background: white;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 5px;
+            position: relative;
+            touch-action: none; 
+            transition: transform 0.1s;
+        }
+        
+        .draggable-item:active { transform: scale(1.05) rotate(2deg); }
+        
+        .draggable-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+            filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.1));
+        }
+
+        .dragging-ghost {
+            position: fixed;
+            width: 110px;
+            height: 110px;
+            pointer-events: none;
+            z-index: 1000;
+            filter: drop-shadow(5px 5px 0px rgba(0,0,0,0.2));
+            transform: translate(-50%, -50%) rotate(5deg);
+        }
+
+        /* --- Wardrobe --- */
+        .wardrobe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 100px;
+        }
+
+        .wardrobe-card {
+            background: white;
+            border: var(--border-thin);
+            border-radius: 10px;
+            padding: 5px;
+            aspect-ratio: 1;
+            position: relative;
+            box-shadow: var(--shadow-hard);
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+        
+        .wardrobe-card:nth-child(odd) { transform: rotate(1deg); }
+        .wardrobe-card:nth-child(even) { transform: rotate(-1deg); }
+
+        .wardrobe-card img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .delete-badge {
+            position: absolute; top: -10px; right: -10px;
+            width: 28px; height: 28px; background: #ff6b6b; color: white;
+            border: 2px solid #444;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px; cursor: pointer;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: white; padding: 10px; border: var(--border-thick); border-radius: 50px;
+            display: flex; gap: 20px; box-shadow: var(--shadow-float);
+            z-index: 200;
+        }
+        .nav-item { width: 60px; height: 60px; font-size: 28px; border-radius: 50%; border: 2px solid #eee; }
+        .nav-item.active { border-color: #444; background: #ffecb3; }
+
+        /* --- Save Button --- */
+        #saveBtn {
+            position: absolute; bottom: 25px; right: 25px;
+            width: 70px; height: 70px; background: #a8e6cf; color: #444;
+            font-size: 32px; border-radius: 50%; z-index: 150;
+            border: var(--border-thick);
+            box-shadow: var(--shadow-float);
+            display: none; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #saveBtn.visible { display: flex; }
+
+        /* Controls Hint */
+        #gestureHint {
+            position: absolute; bottom: 10px; left: 0; right: 0;
+            text-align: center; font-size: 14px; color: #888;
+            pointer-events: none; opacity: 0; transition: opacity 0.5s;
+        }
+
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">✂️ Stoff-Zauber</div>
+        <div id="statusMsg" style="opacity:0; transition:opacity 0.3s; color:#ff6b81; font-weight:bold; font-family:'Patrick Hand'; font-size: 20px;">Gespeichert!</div>
+    </header>
+
+    <main>
+        <!-- DRAW SCREEN -->
+        <div id="drawScreen" class="screen active">
+            <div class="template-selector" id="templateList"></div>
+            
+            <div id="canvasWrapper">
+                <button class="paper-btn" id="undoBtn" style="position:absolute; top:10px; left:10px; width:45px; height:45px; z-index:10; border-radius:50%;">↩️</button>
+                <button class="paper-btn" id="clearBtn" style="position:absolute; top:10px; right:10px; width:45px; height:45px; background:#ff8a80; color:white; z-index:10; border-radius:50%;">🗑️</button>
+                <canvas id="drawCanvas"></canvas>
+            </div>
+            
+            <div class="panel">
+                <div class="tools-scroll" id="brushTools">
+                    <button class="paper-btn tool-item active" data-type="brush" data-size="8">🖌️</button>
+                    <button class="paper-btn tool-item" data-type="pattern" data-pattern="dots">⚪</button>
+                    <button class="paper-btn tool-item" data-type="pattern" data-pattern="stripes">🦓</button>
+                    <button class="paper-btn tool-item" data-type="stamp" data-stamp="⭐">⭐</button>
+                    <button class="paper-btn tool-item" data-type="stamp" data-stamp="❤️">❤️</button>
+                    <button class="paper-btn tool-item" data-type="stamp" data-stamp="🌸">🌸</button>
+                    <button class="paper-btn tool-item" data-type="stamp" data-stamp="⚡">⚡</button>
+                    <button class="paper-btn tool-item" data-type="stamp" data-stamp="🎵">🎵</button>
+                    <button class="paper-btn tool-item" data-type="eraser">✂️</button>
+                </div>
+                <div class="tools-scroll" id="colorPalette"></div>
+            </div>
+            <button id="saveBtn" class="paper-btn visible">💾</button>
+        </div>
+
+        <!-- DRESS UP SCREEN -->
+        <div id="dressupScreen" class="screen">
+            <div style="display: flex; gap: 15px; margin-bottom: 5px; justify-content: center;">
+                <button class="paper-btn active" id="charGirl" style="padding: 5px 20px;" onclick="app.setCharacter('girl')">👧</button>
+                <button class="paper-btn" id="charBoy" style="padding: 5px 20px;" onclick="app.setCharacter('boy')">👦</button>
+            </div>
+
+            <div id="characterStage">
+                <button class="paper-btn" id="photoBtn" style="position:absolute; top:10px; right:10px; width:45px; height:45px; z-index:20; border-radius:50%;">📸</button>
+                <canvas id="characterCanvas"></canvas>
+                <div id="gestureHint">Bewege Arme/Beine • Kleidung: 1 Finger=Schieben, 2 Finger=Drehen/Größe</div>
+            </div>
+
+            <!-- Drag & Drop Inventory Bar -->
+            <div class="panel">
+                <div id="outfitBar">
+                    <div style="color:#999; width:100%; text-align:center; font-family:'Patrick Hand'; font-size:20px;">Bastle zuerst etwas! ✂️</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WARDROBE (GALLERY) SCREEN -->
+        <div id="wardrobeScreen" class="screen">
+            <h2 style="margin-bottom: 10px; color: #444; font-size: 24px; font-family:'Patrick Hand'; text-align:center;">Meine Kleiderbox 📦</h2>
+            <div id="wardrobeGrid" class="wardrobe-grid"></div>
+        </div>
+    </main>
+
+    <nav>
+        <button class="paper-btn nav-item active" data-target="draw">🎨</button>
+        <button class="paper-btn nav-item" data-target="dressup">👯</button>
+        <button class="paper-btn nav-item" data-target="wardrobe">📦</button>
+    </nav>
+
+    <script>
+        /* --- Audio System --- */
+        const AudioSys = {
+            ctx: null,
+            init() {
+                if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            play(type) {
+                this.init();
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                if(type === 'pop') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.05);
+                    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.05);
+                } else if(type === 'magic') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+                }
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+        };
+
+        /* --- Templates --- */
+        const Templates = {
+            shirt: (ctx, w, h) => {
+                ctx.beginPath();
+                ctx.moveTo(w*0.35, h*0.25); ctx.quadraticCurveTo(w*0.5, h*0.35, w*0.65, h*0.25); 
+                ctx.lineTo(w*0.75, h*0.28); ctx.lineTo(w*0.9, h*0.35); ctx.lineTo(w*0.85, h*0.45); 
+                ctx.lineTo(w*0.72, h*0.40); ctx.lineTo(w*0.72, h*0.75);
+                ctx.quadraticCurveTo(w*0.5, h*0.78, w*0.28, h*0.75);
+                ctx.lineTo(w*0.28, h*0.40); ctx.lineTo(w*0.15, h*0.45);
+                ctx.lineTo(w*0.1, h*0.35); ctx.lineTo(w*0.25, h*0.28);
+                ctx.closePath();
+            },
+            pants: (ctx, w, h) => {
+                ctx.beginPath();
+                ctx.moveTo(w*0.32, h*0.30); ctx.lineTo(w*0.68, h*0.30);
+                ctx.quadraticCurveTo(w*0.72, h*0.5, w*0.70, h*0.85); ctx.lineTo(w*0.55, h*0.85);
+                ctx.lineTo(w*0.5, h*0.50); ctx.lineTo(w*0.45, h*0.85); ctx.lineTo(w*0.30, h*0.85);
+                ctx.quadraticCurveTo(w*0.28, h*0.5, w*0.32, h*0.30);
+                ctx.closePath();
+            },
+            skirt: (ctx, w, h) => {
+                ctx.beginPath();
+                ctx.moveTo(w*0.32, h*0.35); ctx.lineTo(w*0.68, h*0.35);
+                ctx.quadraticCurveTo(w*0.8, h*0.6, w*0.85, h*0.75); 
+                ctx.quadraticCurveTo(w*0.5, h*0.85, w*0.15, h*0.75);
+                ctx.quadraticCurveTo(w*0.2, h*0.6, w*0.32, h*0.35);
+                ctx.closePath();
+            },
+            dress: (ctx, w, h) => {
+                ctx.beginPath();
+                ctx.moveTo(w*0.35, h*0.25); ctx.lineTo(w*0.65, h*0.25); ctx.lineTo(w*0.70, h*0.45);
+                ctx.lineTo(w*0.85, h*0.80); ctx.quadraticCurveTo(w*0.5, h*0.85, w*0.15, h*0.80);
+                ctx.lineTo(w*0.30, h*0.45);
+                ctx.closePath();
+            },
+            cap: (ctx, w, h) => {
+                ctx.beginPath();
+                ctx.arc(w*0.5, h*0.45, w*0.25, Math.PI, 0); 
+                ctx.moveTo(w*0.2, h*0.45); ctx.quadraticCurveTo(w*0.5, h*0.65, w*0.8, h*0.45);
+                ctx.lineTo(w*0.75, h*0.45);
+                ctx.closePath();
+            }
+        };
+
+        /* --- Main App --- */
+        class App {
+            constructor() {
+                this.state = {
+                    tool: 'brush', color: '#ff6b81', size: 10,
+                    template: 'shirt', character: 'girl',
+                    designs: [], history: [], historyStep: -1,
+                    // Interactive Outfit State
+                    outfitItems: [], // Array of { id, type, img, x, y, rotation, scale }
+                    // Character Limbs State (Angles in radians)
+                    limbs: { leftArm: 0.35, rightArm: -0.35, leftLeg: 0, rightLeg: 0 }
+                };
+                
+                this.activeClip = false; // Track context clip state
+                
+                this.dom = {
+                    canvas: document.getElementById('drawCanvas'),
+                    charCanvas: document.getElementById('characterCanvas'),
+                    outfitBar: document.getElementById('outfitBar'),
+                    screens: document.querySelectorAll('.screen'),
+                    navs: document.querySelectorAll('.nav-item')
+                };
+
+                this.ctx = this.dom.canvas.getContext('2d', {willReadFrequently: true});
+                this.charCtx = this.dom.charCanvas.getContext('2d');
+                this.isDrawing = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupUI();
+                setTimeout(() => {
+                    this.resizeCanvas();
+                    this.loadData();
+                    this.drawTemplateBase();
+                    this.renderCharacter();
+                }, 100);
+                
+                this.setupDrawingEvents();
+                this.setupInteractionEvents();
+                
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                    if(this.state.historyStep === -1) this.drawTemplateBase();
+                    else if (this.state.history[this.state.historyStep]) {
+                        this.ctx.putImageData(this.state.history[this.state.historyStep], 0, 0);
+                    }
+                    this.renderCharacter();
+                });
+            }
+
+            setupUI() {
+                // Colors
+                const pal = ['#ff6b81', '#74b9ff', '#55efc4', '#ffeaa7', '#a29bfe', '#fab1a0', '#2d3436', '#ffffff'];
+                const palContainer = document.getElementById('colorPalette');
+                pal.forEach((c, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `paper-btn tool-item ${i===0?'active':''}`;
+                    btn.innerHTML = `<div class="color-dot" style="background:${c}"></div>`;
+                    btn.onclick = () => {
+                        this.state.color = c;
+                        AudioSys.play('pop');
+                        document.querySelectorAll('#colorPalette .tool-item').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                    };
+                    palContainer.appendChild(btn);
+                });
+
+                // Templates
+                const tpls = {shirt: '👕', pants: '👖', skirt: '👗', dress: '👚', cap: '🧢'};
+                const list = document.getElementById('templateList');
+                list.innerHTML = '';
+                
+                Object.keys(tpls).forEach((k) => {
+                    const btn = document.createElement('button');
+                    btn.className = `paper-btn template-btn ${k===this.state.template?'active':''}`;
+                    btn.innerHTML = tpls[k];
+                    btn.onclick = () => {
+                        if(this.state.historyStep === -1 || confirm('Neues Teil basteln?')) {
+                            this.state.template = k;
+                            this.clearCanvas(); // Properly resets state now
+                            document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                        }
+                    };
+                    list.appendChild(btn);
+                });
+
+                // Nav
+                this.dom.navs.forEach(btn => {
+                    btn.onclick = () => {
+                        const target = btn.dataset.target;
+                        this.dom.screens.forEach(s => s.classList.remove('active'));
+                        document.getElementById(target + 'Screen').classList.add('active');
+                        this.dom.navs.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById('saveBtn').className = target === 'draw' ? 'paper-btn visible' : 'paper-btn';
+                        
+                        if(target === 'dressup') {
+                            this.updateOutfitBar();
+                            this.renderCharacter();
+                            document.getElementById('gestureHint').style.opacity = 1;
+                            setTimeout(() => document.getElementById('gestureHint').style.opacity = 0, 5000);
+                        }
+                        if(target === 'wardrobe') this.renderWardrobe();
+                    }
+                });
+                
+                document.getElementById('saveBtn').onclick = () => this.saveDesign();
+                document.getElementById('undoBtn').onclick = () => this.undo();
+                document.getElementById('clearBtn').onclick = () => this.clearCanvas();
+                document.getElementById('photoBtn').onclick = () => this.takePhoto();
+                
+                // Tools
+                document.querySelectorAll('#brushTools .tool-item').forEach(btn => {
+                    btn.onclick = () => {
+                        this.state.tool = btn.dataset.type;
+                        if(btn.dataset.pattern) this.state.pattern = btn.dataset.pattern;
+                        if(btn.dataset.stamp) this.state.stamp = btn.dataset.stamp;
+                        document.querySelectorAll('#brushTools .tool-item').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                    };
+                });
+            }
+
+            resizeCanvas() {
+                const rect = document.getElementById('canvasWrapper').getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    this.dom.canvas.width = rect.width;
+                    this.dom.canvas.height = rect.height;
+                }
+                const charRect = document.getElementById('characterStage').getBoundingClientRect();
+                if (charRect.width > 0 && charRect.height > 0) {
+                    this.dom.charCanvas.width = charRect.width;
+                    this.dom.charCanvas.height = charRect.height;
+                }
+            }
+
+            /* --- Improved Drawing State Management --- */
+            drawTemplateBase() {
+                const w = this.dom.canvas.width;
+                const h = this.dom.canvas.height;
+                if (w === 0 || h === 0) return;
+                
+                // 1. CLEAR: If we had a clip, we must restore to unclipped state first
+                if (this.activeClip) {
+                    this.ctx.restore();
+                    this.activeClip = false;
+                }
+                this.ctx.clearRect(0,0,w,h);
+                
+                // 2. Base Draw
+                this.ctx.save();
+                this.ctx.fillStyle = "#ffffff";
+                Templates[this.state.template](this.ctx, w, h);
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // 3. Outlines
+                this.ctx.strokeStyle = "#444";
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]); 
+                this.ctx.stroke();
+                this.ctx.setLineDash([]); 
+
+                // 4. Set NEW Clip for User Drawing
+                this.ctx.save(); 
+                Templates[this.state.template](this.ctx, w, h);
+                this.ctx.clip();
+                this.activeClip = true; // Mark that we have a saved clip state
+                
+                if(this.state.history.length === 0) this.saveState();
+            }
+
+            clearCanvas() {
+                this.state.history = [];
+                this.state.historyStep = -1;
+                this.drawTemplateBase();
+            }
+
+            saveState() {
+                if (this.dom.canvas.width === 0) return;
+                this.state.historyStep++;
+                if (this.state.historyStep < this.state.history.length) this.state.history.length = this.state.historyStep;
+                this.state.history.push(this.ctx.getImageData(0,0, this.dom.canvas.width, this.dom.canvas.height));
+            }
+
+            undo() {
+                if(this.state.historyStep > 0) {
+                    this.state.historyStep--;
+                    this.ctx.putImageData(this.state.history[this.state.historyStep], 0, 0);
+                }
+            }
+
+            setupDrawingEvents() {
+                const getPos = (e) => {
+                    const r = this.dom.canvas.getBoundingClientRect();
+                    const t = e.touches ? e.touches[0] : e;
+                    return { x: t.clientX - r.left, y: t.clientY - r.top };
+                };
+
+                const start = (e) => {
+                    this.isDrawing = true;
+                    this.lastPoint = getPos(e);
+                    // Re-apply clip if lost (though activeClip logic should handle it, double buffering sometimes needs this)
+                    // Simplified: We draw on top of current canvas state which HAS the clip active.
+                    if(this.state.tool === 'stamp') {
+                        this.ctx.font = '40px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText(this.state.stamp, this.lastPoint.x, this.lastPoint.y);
+                        this.isDrawing = false;
+                        this.saveState();
+                        AudioSys.play('pop');
+                    } else {
+                        this.draw(this.lastPoint);
+                    }
+                };
+
+                const move = (e) => {
+                    if(!this.isDrawing || this.state.tool === 'stamp') return;
+                    e.preventDefault(); 
+                    const p = getPos(e);
+                    this.draw(p);
+                    this.lastPoint = p;
+                };
+
+                const end = () => {
+                    if(this.isDrawing) {
+                        this.isDrawing = false;
+                        this.saveState();
+                    }
+                };
+
+                const cvs = this.dom.canvas;
+                cvs.addEventListener('mousedown', start);
+                cvs.addEventListener('mousemove', move);
+                cvs.addEventListener('mouseup', end);
+                cvs.addEventListener('touchstart', start, {passive: false});
+                cvs.addEventListener('touchmove', move, {passive: false});
+                cvs.addEventListener('touchend', end);
+            }
+
+            draw(pos) {
+                this.ctx.lineWidth = this.state.size;
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                
+                if(this.state.tool === 'eraser') {
+                    this.ctx.globalCompositeOperation = 'destination-out';
+                } else {
+                    this.ctx.globalCompositeOperation = 'source-over';
+                    this.ctx.strokeStyle = this.state.color;
+                    
+                    if(this.state.tool === 'pattern') {
+                        const pCvs = document.createElement('canvas');
+                        pCvs.width = 10; pCvs.height = 10;
+                        const pCtx = pCvs.getContext('2d');
+                        pCtx.fillStyle = this.state.color;
+                        if(this.state.pattern === 'dots') {
+                            pCtx.beginPath(); pCtx.arc(5,5,2,0,Math.PI*2); pCtx.fill();
+                        } else {
+                            pCtx.fillRect(0,0,10,3);
+                        }
+                        this.ctx.strokeStyle = this.ctx.createPattern(pCvs, 'repeat');
+                    }
+                }
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.lastPoint.x, this.lastPoint.y);
+                this.ctx.quadraticCurveTo(this.lastPoint.x, this.lastPoint.y, (this.lastPoint.x + pos.x)/2, (this.lastPoint.y + pos.y)/2);
+                this.ctx.lineTo(pos.x, pos.y);
+                this.ctx.stroke();
+            }
+
+            saveDesign() {
+                // Must unclip to save clean image? 
+                // Actually toDataURL saves what's visible.
+                const item = {
+                    id: Date.now(),
+                    type: this.state.template,
+                    img: this.dom.canvas.toDataURL()
+                };
+                this.state.designs.push(item);
+                localStorage.setItem('stoffZauberUlt_Designs', JSON.stringify(this.state.designs));
+                AudioSys.play('magic');
+                const msg = document.getElementById('statusMsg');
+                msg.style.opacity = 1;
+                setTimeout(() => msg.style.opacity = 0, 1500);
+            }
+
+            loadData() {
+                const d = localStorage.getItem('stoffZauberUlt_Designs');
+                if(d) this.state.designs = JSON.parse(d);
+            }
+
+            /* --- INTERACTIVE DRESS UP --- */
+            
+            setupInteractionEvents() {
+                const cvs = this.dom.charCanvas;
+                let activeObj = null; // Either a cloth item or a limb ID
+                let startTouches = [];
+                let startTrans = {}; // Initial state of object
+                
+                const getTouches = (e) => Array.from(e.touches).map(t => ({x: t.clientX, y: t.clientY}));
+                const getDist = (p1, p2) => Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                const getAngle = (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+                const handleStart = (e) => {
+                    e.preventDefault();
+                    startTouches = getTouches(e);
+                    const t1 = startTouches[0];
+                    const rect = cvs.getBoundingClientRect();
+                    const clickX = t1.x - rect.left;
+                    const clickY = t1.y - rect.top;
+
+                    // 1. Check Clothing Hit (Top-down)
+                    for (let i = this.state.outfitItems.length - 1; i >= 0; i--) {
+                        const item = this.state.outfitItems[i];
+                        // Simple radius check adjusted by scale
+                        const dx = clickX - item.x;
+                        const dy = clickY - item.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < 50 * item.scale) {
+                            activeObj = { type: 'cloth', index: i };
+                            startTrans = { ...item };
+                            return;
+                        }
+                    }
+
+                    // 2. Check Limbs Hit
+                    const cx = cvs.width / 2;
+                    const cy = cvs.height / 2 + 20;
+                    // Approximate joint positions relative to body center
+                    const joints = {
+                        leftArm: { x: cx - 32, y: cy - 25 },
+                        rightArm: { x: cx + 14, y: cy - 20 },
+                        leftLeg: { x: cx - 22, y: cy + 40 },
+                        rightLeg: { x: cx + 6, y: cy + 40 }
+                    };
+                    
+                    for (const [key, pos] of Object.entries(joints)) {
+                        const dx = clickX - pos.x;
+                        const dy = clickY - pos.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < 40) {
+                            activeObj = { type: 'limb', id: key };
+                            startTrans = { angle: this.state.limbs[key] };
+                            return;
+                        }
+                    }
+                    
+                    activeObj = null;
+                };
+
+                const handleMove = (e) => {
+                    if (!activeObj) return;
+                    e.preventDefault();
+                    const touches = getTouches(e);
+                    const rect = cvs.getBoundingClientRect();
+
+                    if (activeObj.type === 'cloth') {
+                        const item = this.state.outfitItems[activeObj.index];
+                        
+                        if (touches.length === 1) {
+                            // Drag
+                            const dx = touches[0].x - startTouches[0].x;
+                            const dy = touches[0].y - startTouches[0].y;
+                            item.x = startTrans.x + dx;
+                            item.y = startTrans.y + dy;
+                        } else if (touches.length === 2 && startTouches.length === 2) {
+                            // Pinch/Rotate
+                            const startDist = getDist(startTouches[0], startTouches[1]);
+                            const currDist = getDist(touches[0], touches[1]);
+                            const startAng = getAngle(startTouches[0], startTouches[1]);
+                            const currAng = getAngle(touches[0], touches[1]);
+                            
+                            item.scale = Math.max(0.5, Math.min(2.5, startTrans.scale * (currDist / startDist)));
+                            item.rotation = startTrans.rotation + (currAng - startAng);
+                        }
+                    } 
+                    else if (activeObj.type === 'limb') {
+                        // Limb rotation based on drag Y or angle
+                        // Simple Y-drag controls angle
+                        if (touches.length === 1) {
+                            const dy = touches[0].y - startTouches[0].y;
+                            // Sensitivity factor
+                            this.state.limbs[activeObj.id] = startTrans.angle + (dy * 0.02); 
+                        }
+                    }
+                    this.renderCharacter();
+                };
+
+                cvs.addEventListener('touchstart', handleStart, {passive:false});
+                cvs.addEventListener('touchmove', handleMove, {passive:false});
+                // Mouse fallback for desktop testing
+                cvs.addEventListener('mousedown', (e) => {
+                    const t = { touches: [{ clientX: e.clientX, clientY: e.clientY }] };
+                    t.preventDefault = () => {};
+                    handleStart(t);
+                    const move = (ev) => {
+                        const tm = { touches: [{ clientX: ev.clientX, clientY: ev.clientY }] };
+                        tm.preventDefault = () => {};
+                        handleMove(tm);
+                    };
+                    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+                    window.addEventListener('mousemove', move);
+                    window.addEventListener('mouseup', up);
+                });
+            }
+
+            setCharacter(type) {
+                this.state.character = type;
+                document.getElementById('charGirl').className = `paper-btn ${type==='girl'?'active':''}`;
+                document.getElementById('charBoy').className = `paper-btn ${type==='boy'?'active':''}`;
+                this.renderCharacter();
+            }
+
+            renderCharacter() {
+                const ctx = this.charCtx;
+                const w = this.dom.charCanvas.width;
+                const h = this.dom.charCanvas.height;
+                const cx = w / 2;
+                const cy = h / 2 + 20; 
+                
+                ctx.clearRect(0,0,w,h);
+
+                // Settings
+                ctx.strokeStyle = "#444";
+                ctx.lineWidth = 3;
+                ctx.lineJoin = "round";
+                ctx.fillStyle = "#ffeaa7"; // Skin
+
+                // --- Limbs (Interactive) ---
+                const drawLimb = (x, y, w, h, angle) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(angle);
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.strokeRect(0, 0, w, h);
+                    ctx.restore();
+                };
+
+                // Legs
+                drawLimb(cx - 22, cy + 40, 16, 95, this.state.limbs.leftLeg);
+                drawLimb(cx + 6, cy + 40, 16, 95, this.state.limbs.rightLeg);
+                
+                // Arms
+                drawLimb(cx - 32, cy - 25, 18, 75, this.state.limbs.leftArm);
+                drawLimb(cx + 14, cy - 20, 18, 75, this.state.limbs.rightArm);
+
+                // Torso
+                ctx.beginPath();
+                ctx.roundRect(cx - 30, cy - 40, 60, 90, 5);
+                ctx.fill(); ctx.stroke();
+
+                // --- Clothes (from outfitItems array) ---
+                // Sort items? For now we draw in array order.
+                this.state.outfitItems.forEach(item => {
+                    const img = new Image();
+                    img.src = item.img;
+                    if (!img.complete) {
+                        img.onload = () => this.renderCharacter();
+                    }
+                    
+                    ctx.save();
+                    ctx.translate(item.x, item.y);
+                    ctx.rotate(item.rotation);
+                    ctx.scale(item.scale, item.scale);
+                    
+                    // Draw centered at item's position
+                    // We assume the image is roughly 200-300px wide based on canvas size
+                    // Since we save full canvas in design, the "center" of the shirt is where it was drawn.
+                    // We need to draw the image centered. 
+                    // Actually, the saved image is the FULL canvas size.
+                    // Drawing it centered at (0,0) with offset
+                    const imgSize = 300; // rough canvas size reference
+                    ctx.drawImage(img, -imgSize/2, -imgSize/2, imgSize, imgSize);
+                    
+                    ctx.restore();
+                });
+
+                // Head (Always top)
+                const headEmoji = this.state.character === 'girl' ? '👧' : '👦';
+                ctx.font = "90px Fredoka"; 
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillStyle = "white"; 
+                ctx.beginPath(); ctx.arc(cx, cy - 45, 34, 0, Math.PI*2); ctx.fill(); 
+                ctx.fillText(headEmoji, cx, cy - 10);
+            }
+
+            updateOutfitBar() {
+                this.dom.outfitBar.innerHTML = '';
+                if(this.state.designs.length === 0) {
+                    this.dom.outfitBar.innerHTML = '<div style="width:100%;text-align:center;color:#999;font-family:\'Patrick Hand\'">Box leer...</div>';
+                    return;
+                }
+
+                this.state.designs.slice().reverse().forEach(d => {
+                    const div = document.createElement('div');
+                    div.className = 'draggable-item';
+                    div.innerHTML = `<img src="${d.img}">`;
+                    
+                    const startDrag = (e) => this.handleDragStart(e, d, div);
+                    div.addEventListener('mousedown', startDrag);
+                    div.addEventListener('touchstart', startDrag, {passive: false});
+                    this.dom.outfitBar.appendChild(div);
+                });
+            }
+
+            handleDragStart(e, itemData, element) {
+                e.preventDefault();
+                const ghost = element.cloneNode(true);
+                ghost.className = 'dragging-ghost';
+                document.body.appendChild(ghost);
+                
+                const move = (ev) => {
+                    const t = ev.touches ? ev.touches[0] : ev;
+                    ghost.style.left = t.clientX + 'px';
+                    ghost.style.top = t.clientY + 'px';
+                };
+
+                const stop = (ev) => {
+                    document.removeEventListener('mousemove', move);
+                    document.removeEventListener('mouseup', stop);
+                    document.removeEventListener('touchmove', move);
+                    document.removeEventListener('touchend', stop);
+                    
+                    const t = ev.changedTouches ? ev.changedTouches[0] : ev;
+                    const stageRect = document.getElementById('characterStage').getBoundingClientRect();
+                    
+                    if(t.clientX > stageRect.left && t.clientX < stageRect.right &&
+                       t.clientY > stageRect.top && t.clientY < stageRect.bottom) {
+                        
+                        this.addOutfitItem(itemData, t.clientX - stageRect.left, t.clientY - stageRect.top);
+                        AudioSys.play('pop');
+                    }
+                    ghost.remove();
+                };
+                
+                const t = e.touches ? e.touches[0] : e;
+                ghost.style.left = t.clientX + 'px';
+                ghost.style.top = t.clientY + 'px';
+
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', stop);
+                document.addEventListener('touchmove', move, {passive: false});
+                document.addEventListener('touchend', stop);
+            }
+
+            addOutfitItem(data, x, y) {
+                // Add new item to state
+                this.state.outfitItems.push({
+                    id: Date.now(),
+                    img: data.img,
+                    type: data.type,
+                    x: x, 
+                    y: y,
+                    scale: 1.0,
+                    rotation: 0
+                });
+                this.renderCharacter();
+            }
+
+            renderWardrobe() {
+                const grid = document.getElementById('wardrobeGrid');
+                grid.innerHTML = '';
+                this.state.designs.forEach(d => {
+                    const el = document.createElement('div');
+                    el.className = 'wardrobe-card';
+                    el.innerHTML = `<div class="delete-badge">×</div><img src="${d.img}">`;
+                    el.querySelector('.delete-badge').onclick = () => {
+                        this.state.designs = this.state.designs.filter(x => x.id !== d.id);
+                        localStorage.setItem('stoffZauberUlt_Designs', JSON.stringify(this.state.designs));
+                        this.renderWardrobe();
+                    };
+                    grid.appendChild(el);
+                });
+            }
+
+            takePhoto() {
+                const link = document.createElement('a');
+                link.download = `mein-outfit-${Date.now()}.png`;
+                link.href = this.dom.charCanvas.toDataURL();
+                link.click();
+            }
+        }
+
+        // Initialize with layout safety check
+        window.addEventListener('load', () => {
+           window.app = new App();
+        });
+    </script>
+</body>
+</html>
